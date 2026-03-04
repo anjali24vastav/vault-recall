@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, setIcon, Notice } from 'obsidian';
 import type VaultRecallPlugin from '../main';
 import type { ResurfacedNote } from '../resurfacer/resurfacer';
 import type { HealthReport } from '../health/analyzer';
@@ -72,6 +72,13 @@ export class VaultRecallView extends ItemView {
             await this.renderView();
         });
 
+        // Streak counter (if user has reviewed notes)
+        const streak = this.plugin.reviewManager?.getStreak() ?? 0;
+        if (streak > 0) {
+            const streakEl = topBar.createDiv({ cls: 'vr-streak' });
+            streakEl.createSpan({ text: `🔥 ${streak}d streak` });
+        }
+
         // Tab content
         const content = container.createDiv({ cls: 'vr-tab-content' });
 
@@ -134,7 +141,24 @@ export class VaultRecallView extends ItemView {
 
         const list = container.createDiv({ cls: 'vr-note-list' });
         for (const note of digest) {
-            this.renderNoteCard(list, note.file, note.snippet, note.reason, `${note.daysSinceModified}d ago`);
+            this.renderNoteCard(list, note.file, note.snippet, note.reason, `${note.daysSinceModified}d ago`, true);
+        }
+
+        // Review Queue section (Pro only)
+        if (this.plugin.isPro()) {
+            await this.renderReviewQueue(container);
+        } else {
+            const dueCount = this.plugin.reviewManager?.getDueForReview().length ?? 0;
+            if (dueCount > 0) {
+                const upsell = container.createDiv({ cls: 'vr-upsell' });
+                upsell.createEl('p', { text: `🔁 ${dueCount} notes due for review` });
+                upsell.createEl('p', { text: 'Unlock Smart Review Queue with Pro', cls: 'vr-subtitle' });
+                upsell.createEl('a', {
+                    text: 'Upgrade to Pro →',
+                    href: 'https://vastavanjali.gumroad.com/l/nrwpa',
+                    cls: 'vr-upsell-link',
+                });
+            }
         }
     }
 
@@ -185,6 +209,64 @@ export class VaultRecallView extends ItemView {
                 `${daysSince}d ago`,
             );
         }
+
+        // Link Suggestions section (Pro only)
+        if (this.plugin.isPro()) {
+            const linkSuggestions = this.plugin.linkSuggester?.getSuggestions(activeFile, 5) ?? [];
+            if (linkSuggestions.length > 0) {
+                container.createEl('h4', { text: '💡 Suggested Links', cls: 'vr-section-subheader' });
+
+                const linkList = container.createDiv({ cls: 'vr-note-list' });
+                for (const suggestion of linkSuggestions) {
+                    const card = linkList.createDiv({ cls: 'vr-note-card' });
+                    const titleRow = card.createDiv({ cls: 'vr-card-title-row' });
+                    titleRow.createSpan({ text: suggestion.file.basename, cls: 'vr-card-title' });
+
+                    const similarity = Math.round(suggestion.similarity * 100);
+                    titleRow.createSpan({ text: `${similarity}%`, cls: 'vr-card-age' });
+
+                    if (suggestion.sharedTerms.length > 0) {
+                        card.createDiv({
+                            text: suggestion.sharedTerms.join(', '),
+                            cls: 'vr-card-badge',
+                        });
+                    }
+
+                    const actions = card.createDiv({ cls: 'vr-card-actions' });
+                    const insertBtn = actions.createEl('button', {
+                        text: '🔗 Insert link',
+                        cls: 'vr-btn vr-btn-review',
+                    });
+                    insertBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        // Insert link at cursor in the active editor
+                        const editor = this.app.workspace.activeEditor?.editor;
+                        if (editor) {
+                            const cursor = editor.getCursor();
+                            const linkText = `[[${suggestion.file.basename}]]`;
+                            editor.replaceRange(linkText, cursor);
+                            new Notice(`Linked to "${suggestion.file.basename}"`);
+                        } else {
+                            new Notice('Open the note in the editor first');
+                        }
+                    });
+
+                    card.addEventListener('click', () => {
+                        this.app.workspace.getLeaf(false).openFile(suggestion.file);
+                    });
+                }
+            }
+        } else {
+            // Upsell for link suggestions
+            const upsell = container.createDiv({ cls: 'vr-upsell' });
+            upsell.createEl('p', { text: '💡 Discover missing connections' });
+            upsell.createEl('p', { text: 'Get link suggestions with Pro', cls: 'vr-subtitle' });
+            upsell.createEl('a', {
+                text: 'Upgrade to Pro →',
+                href: 'https://vastavanjali.gumroad.com/l/nrwpa',
+                cls: 'vr-upsell-link',
+            });
+        }
     }
 
     // ── Health Tab ───────────────────────────────────────────────
@@ -214,12 +296,42 @@ export class VaultRecallView extends ItemView {
         // Issue details — Pro only
         if (this.plugin.isPro() || FREE_LIMITS.fullHealthDetails) {
             if (report.orphanNotes.length > 0) {
-                this.renderIssueGroup(container, '🏝️ Orphan Notes', report.orphanNotes.slice(0, 10));
+                this.renderIssueGroupWithActions(
+                    container,
+                    '🏝️ Orphan Notes',
+                    report.orphanNotes.slice(0, 10),
+                    'orphan',
+                );
             }
 
             if (report.brokenLinks.length > 0) {
                 const group = container.createDiv({ cls: 'vr-issue-group' });
-                group.createEl('h5', { text: `💔 Broken Links (${report.brokenLinks.length})` });
+                const header = group.createDiv({ cls: 'vr-issue-header' });
+                header.createEl('h5', { text: `💔 Broken Links (${report.brokenLinks.length})` });
+
+                if (this.plugin.isPro()) {
+                    const fixAllBtn = header.createEl('button', {
+                        text: '✨ Create all missing',
+                        cls: 'vr-btn vr-btn-review',
+                    });
+                    fixAllBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        let created = 0;
+                        for (const bl of report.brokenLinks) {
+                            const targetPath = bl.targetPath.endsWith('.md')
+                                ? bl.targetPath
+                                : `${bl.targetPath}.md`;
+                            const exists = this.app.vault.getAbstractFileByPath(targetPath);
+                            if (!exists) {
+                                await this.app.vault.create(targetPath, `# ${bl.targetPath}\n\n`);
+                                created++;
+                            }
+                        }
+                        new Notice(`Created ${created} missing notes`);
+                        await this.renderView();
+                    });
+                }
+
                 for (const bl of report.brokenLinks.slice(0, 10)) {
                     const item = group.createDiv({ cls: 'vr-issue-item' });
                     item.createSpan({
@@ -230,11 +342,36 @@ export class VaultRecallView extends ItemView {
                         text: bl.targetPath,
                         cls: 'vr-issue-broken',
                     });
+
+                    if (this.plugin.isPro()) {
+                        const createBtn = item.createEl('button', {
+                            text: '+ Create',
+                            cls: 'vr-btn vr-btn-fix',
+                        });
+                        createBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const targetPath = bl.targetPath.endsWith('.md')
+                                ? bl.targetPath
+                                : `${bl.targetPath}.md`;
+                            const exists = this.app.vault.getAbstractFileByPath(targetPath);
+                            if (!exists) {
+                                const file = await this.app.vault.create(targetPath, `# ${bl.targetPath}\n\n`);
+                                new Notice(`Created "${bl.targetPath}"`);
+                                this.app.workspace.getLeaf(false).openFile(file);
+                            }
+                            await this.renderView();
+                        });
+                    }
                 }
             }
 
             if (report.emptyNotes.length > 0) {
-                this.renderIssueGroup(container, '📭 Empty Notes', report.emptyNotes.slice(0, 10));
+                this.renderIssueGroupWithActions(
+                    container,
+                    '📭 Empty Notes',
+                    report.emptyNotes.slice(0, 10),
+                    'empty',
+                );
             }
         } else {
             // Free tier: show upgrade prompt
@@ -244,7 +381,7 @@ export class VaultRecallView extends ItemView {
                 text: 'See orphan notes, broken links, and more',
                 cls: 'vr-subtitle',
             });
-            const link = upsell.createEl('a', {
+            upsell.createEl('a', {
                 text: 'Upgrade to Pro →',
                 href: 'https://vastavanjali.gumroad.com/l/nrwpa',
                 cls: 'vr-upsell-link',
@@ -290,6 +427,108 @@ export class VaultRecallView extends ItemView {
         }
     }
 
+    private renderIssueGroupWithActions(
+        container: HTMLElement,
+        title: string,
+        files: TFile[],
+        type: 'orphan' | 'empty',
+    ): void {
+        const group = container.createDiv({ cls: 'vr-issue-group' });
+        const header = group.createDiv({ cls: 'vr-issue-header' });
+        header.createEl('h5', { text: `${title} (${files.length})` });
+
+        // Group-level action for Pro users
+        if (this.plugin.isPro() && type === 'orphan' && files.length > 0) {
+            const mocBtn = header.createEl('button', {
+                text: '📋 Create MOC',
+                cls: 'vr-btn vr-btn-review',
+            });
+            mocBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Generate a Map of Content linking all orphan notes
+                let content = `# 🗺️ Map of Content — Orphan Notes\n\n`;
+                content += `_Generated by Vault Recall on ${new Date().toISOString().split('T')[0]}_\n\n`;
+                content += `These notes have no incoming links. Consider connecting them:\n\n`;
+                for (const f of files) {
+                    content += `- [[${f.basename}]]\n`;
+                }
+
+                const folder = this.plugin.settings.weeklySummaryFolder || 'Vault Recall';
+                if (!(await this.app.vault.adapter.exists(folder))) {
+                    await this.app.vault.createFolder(folder);
+                }
+
+                const path = `${folder}/Orphan Notes MOC.md`;
+                const existing = this.app.vault.getAbstractFileByPath(path);
+                if (existing instanceof TFile) {
+                    await this.app.vault.modify(existing, content);
+                    this.app.workspace.getLeaf(false).openFile(existing);
+                } else {
+                    const file = await this.app.vault.create(path, content);
+                    this.app.workspace.getLeaf(false).openFile(file);
+                }
+                new Notice('📋 MOC created for orphan notes!');
+            });
+        }
+
+        for (const file of files) {
+            const item = group.createDiv({ cls: 'vr-issue-item vr-clickable' });
+            item.createSpan({ text: file.basename });
+
+            if (this.plugin.isPro()) {
+                const actions = item.createDiv({ cls: 'vr-issue-actions' });
+
+                const openBtn = actions.createEl('button', {
+                    text: 'Open',
+                    cls: 'vr-btn',
+                });
+                openBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.app.workspace.getLeaf(false).openFile(file);
+                });
+
+                if (type === 'empty') {
+                    const deleteBtn = actions.createEl('button', {
+                        text: '🗑️',
+                        cls: 'vr-btn vr-btn-skip',
+                    });
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        await this.app.vault.trash(file, true);
+                        new Notice(`Moved "${file.basename}" to trash`);
+                        await this.renderView();
+                    });
+                }
+            } else {
+                item.addEventListener('click', () => {
+                    this.app.workspace.getLeaf(false).openFile(file);
+                });
+            }
+        }
+    }
+
+    // ── Review Queue ────────────────────────────────────────────
+
+    private async renderReviewQueue(container: HTMLElement): Promise<void> {
+        const reviewManager = this.plugin.reviewManager;
+        if (!reviewManager?.isLoaded()) return;
+
+        const dueNotes = reviewManager.getDueForReview();
+        if (dueNotes.length === 0) return;
+
+        container.createEl('h4', { text: '🔁 Review Queue', cls: 'vr-section-subheader' });
+
+        const list = container.createDiv({ cls: 'vr-note-list' });
+        for (const entry of dueNotes.slice(0, 5)) {
+            const file = this.app.vault.getAbstractFileByPath(entry.path);
+            if (file instanceof TFile) {
+                const reviewCount = entry.reviewCount;
+                const badge = reviewCount > 0 ? `Reviewed ${reviewCount}x` : 'New';
+                this.renderNoteCard(list, file, '', badge, '', true);
+            }
+        }
+    }
+
     // ── Shared Components ───────────────────────────────────────
 
     private renderNoteCard(
@@ -298,12 +537,15 @@ export class VaultRecallView extends ItemView {
         snippet: string,
         badge: string,
         age: string,
+        showReviewActions: boolean = false,
     ): void {
         const card = container.createDiv({ cls: 'vr-note-card' });
 
         const titleRow = card.createDiv({ cls: 'vr-card-title-row' });
-        const titleEl = titleRow.createSpan({ text: file.basename, cls: 'vr-card-title' });
-        titleRow.createSpan({ text: age, cls: 'vr-card-age' });
+        titleRow.createSpan({ text: file.basename, cls: 'vr-card-title' });
+        if (age) {
+            titleRow.createSpan({ text: age, cls: 'vr-card-age' });
+        }
 
         if (badge) {
             card.createDiv({ text: badge, cls: 'vr-card-badge' });
@@ -311,6 +553,31 @@ export class VaultRecallView extends ItemView {
 
         if (snippet) {
             card.createDiv({ text: snippet, cls: 'vr-card-snippet' });
+        }
+
+        // Review action buttons (Pro only)
+        if (showReviewActions && this.plugin.isPro()) {
+            const actions = card.createDiv({ cls: 'vr-card-actions' });
+
+            const reviewBtn = actions.createEl('button', {
+                text: '✓ Reviewed',
+                cls: 'vr-btn vr-btn-review',
+            });
+            reviewBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await this.plugin.reviewManager?.markReviewed(file.path);
+                await this.renderView();
+            });
+
+            const skipBtn = actions.createEl('button', {
+                text: 'Skip →',
+                cls: 'vr-btn vr-btn-skip',
+            });
+            skipBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await this.plugin.reviewManager?.markSkipped(file.path);
+                await this.renderView();
+            });
         }
 
         // Click to open

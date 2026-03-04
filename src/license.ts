@@ -21,10 +21,14 @@ export class LicenseManager {
         lastChecked: 0,
     };
 
+    /** Debug override — when set, bypasses real license check */
+    debugOverride: 'pro' | 'free' | null = null;
+
     /**
      * Check if the user has an active Pro license.
      */
     isPro(): boolean {
+        if (this.debugOverride !== null) return this.debugOverride === 'pro';
         return this.status.valid && this.status.tier === 'pro';
     }
 

@@ -19,6 +19,10 @@ export interface VaultRecallSettings {
         tier: 'free' | 'pro';
         lastChecked: number;
     } | null;
+    /** Enable weekly summary note generation */
+    enableWeeklySummary: boolean;
+    /** Folder to save weekly summary notes */
+    weeklySummaryFolder: string;
 }
 
 export const DEFAULT_SETTINGS: VaultRecallSettings = {
@@ -28,6 +32,8 @@ export const DEFAULT_SETTINGS: VaultRecallSettings = {
     showDigestOnStartup: true,
     licenseKey: '',
     licenseStatus: null,
+    enableWeeklySummary: true,
+    weeklySummaryFolder: 'Vault Recall',
 };
 
 export class VaultRecallSettingTab extends PluginSettingTab {
@@ -98,6 +104,30 @@ export class VaultRecallSettingTab extends PluginSettingTab {
                     this.plugin.settings.showDigestOnStartup = value;
                     await this.plugin.saveSettingsOnly();
                 }));
+
+        // ── Weekly summary ──────────────────────────────
+        new Setting(containerEl)
+            .setName('Weekly summary note')
+            .setDesc('Auto-generate a weekly summary note with your vault activity')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableWeeklySummary)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableWeeklySummary = value;
+                    await this.plugin.saveSettingsOnly();
+                }));
+
+        if (this.plugin.settings.enableWeeklySummary) {
+            new Setting(containerEl)
+                .setName('Summary folder')
+                .setDesc('Folder where weekly summaries are saved')
+                .addText(text => text
+                    .setPlaceholder('Vault Recall')
+                    .setValue(this.plugin.settings.weeklySummaryFolder)
+                    .onChange(async (value) => {
+                        this.plugin.settings.weeklySummaryFolder = value.trim() || 'Vault Recall';
+                        await this.plugin.saveSettingsOnly();
+                    }));
+        }
     }
 
     // ── License Section ─────────────────────────────────────

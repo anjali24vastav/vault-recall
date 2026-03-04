@@ -1,3 +1,4 @@
+declare const DEBUG_MODE: boolean;
 import { Plugin, WorkspaceLeaf, TFile, Notice } from 'obsidian';
 import { DEFAULT_SETTINGS, VaultRecallSettings, VaultRecallSettingTab } from './settings';
 import { EmbeddingEngine } from './embeddings/engine';
@@ -6,12 +7,18 @@ import { VaultHealthAnalyzer } from './health/analyzer';
 import { VaultRecallView, VIEW_TYPE } from './views/sidebar-view';
 import { DailyDigestModal } from './views/digest-modal';
 import { LicenseManager, LicenseStatus, FREE_LIMITS } from './license';
+import { ReviewManager } from './review/review-manager';
+import { WeeklySummary } from './summary/weekly-summary';
+import { LinkSuggester } from './suggestions/link-suggester';
 
 export default class VaultRecallPlugin extends Plugin {
     settings: VaultRecallSettings;
     engine: EmbeddingEngine | null = null;
     resurfacer: SmartResurfacer | null = null;
     healthAnalyzer: VaultHealthAnalyzer | null = null;
+    reviewManager: ReviewManager | null = null;
+    weeklySummary: WeeklySummary | null = null;
+    linkSuggester: LinkSuggester | null = null;
     private licenseManager: LicenseManager = new LicenseManager();
 
     // Debounce timers
@@ -35,6 +42,9 @@ export default class VaultRecallPlugin extends Plugin {
         this.engine = new EmbeddingEngine(this.app, excludedFolders, indexDir);
         this.resurfacer = new SmartResurfacer(this.app, this.engine, this.settings.minDaysOld);
         this.healthAnalyzer = new VaultHealthAnalyzer(this.app, excludedFolders);
+        this.reviewManager = new ReviewManager(this.app, indexDir);
+        this.weeklySummary = new WeeklySummary(this.app, indexDir);
+        this.linkSuggester = new LinkSuggester(this.app, this.engine);
 
         // Register the sidebar view
         this.registerView(VIEW_TYPE, (leaf) => new VaultRecallView(leaf, this));
@@ -63,15 +73,60 @@ export default class VaultRecallPlugin extends Plugin {
             callback: () => this.showDailyDigest(),
         });
 
+        this.addCommand({
+            id: 'generate-weekly-summary',
+            name: 'Generate weekly summary',
+            callback: () => this.generateWeeklySummary(),
+        });
+
+        // Debug commands — stripped from production builds by esbuild
+        if (DEBUG_MODE) {
+            this.addCommand({
+                id: 'debug-force-pro',
+                name: 'Debug: Force Pro mode',
+                callback: () => {
+                    this.licenseManager.debugOverride = 'pro';
+                    new Notice('🔓 Debug: Pro mode ON');
+                    this.debouncedRefreshSidebar();
+                },
+            });
+
+            this.addCommand({
+                id: 'debug-force-free',
+                name: 'Debug: Force Free mode',
+                callback: () => {
+                    this.licenseManager.debugOverride = 'free';
+                    new Notice('🔒 Debug: Free mode ON');
+                    this.debouncedRefreshSidebar();
+                },
+            });
+
+            this.addCommand({
+                id: 'debug-reset-license',
+                name: 'Debug: Reset to real license',
+                callback: () => {
+                    this.licenseManager.debugOverride = null;
+                    new Notice('🔄 Debug: Using real license status');
+                    this.debouncedRefreshSidebar();
+                },
+            });
+        }
+
         // Settings tab
         this.addSettingTab(new VaultRecallSettingTab(this.app, this));
 
         // Auto-index on startup
         this.app.workspace.onLayoutReady(async () => {
             await this.initializeIndex();
+            await this.reviewManager?.load();
 
             if (this.settings.showDigestOnStartup && this.engine?.isReady()) {
                 setTimeout(() => this.showDailyDigest(), 2000);
+            }
+
+            // Auto-generate weekly summary if due
+            if (this.settings.enableWeeklySummary) {
+                setTimeout(() => this.autoGenerateWeeklySummary(), 5000);
             }
         });
 
@@ -88,6 +143,7 @@ export default class VaultRecallPlugin extends Plugin {
             this.app.vault.on('delete', (file) => {
                 if (file instanceof TFile) {
                     this.engine?.removeNote(file.path);
+                    this.reviewManager?.removeNote(file.path);
                 }
             })
         );
@@ -113,6 +169,7 @@ export default class VaultRecallPlugin extends Plugin {
         if (this.indexDebounceTimer) clearTimeout(this.indexDebounceTimer);
         if (this.refreshDebounceTimer) clearTimeout(this.refreshDebounceTimer);
         this.engine?.saveIndex();
+        this.reviewManager?.save();
     }
 
     // ── License ─────────────────────────────────────────────
@@ -139,7 +196,37 @@ export default class VaultRecallPlugin extends Plugin {
         return Math.min(this.settings.digestCount, FREE_LIMITS.maxDigestCount);
     }
 
-    // ── Settings ────────────────────────────────────────────
+    // ── Weekly Summary ──────────────────────────────────────
+
+    async generateWeeklySummary(): Promise<void> {
+        if (!this.weeklySummary) return;
+
+        const healthScore = this.healthAnalyzer?.analyze()?.score;
+        const reviewCount = this.reviewManager?.getTotalReviews();
+
+        const file = await this.weeklySummary.generate(
+            this.settings.weeklySummaryFolder,
+            this.isPro(),
+            healthScore,
+            reviewCount,
+        );
+
+        if (file) {
+            new Notice('📝 Weekly summary created!');
+            this.app.workspace.getLeaf(false).openFile(file);
+        } else {
+            new Notice('Could not generate weekly summary');
+        }
+    }
+
+    private async autoGenerateWeeklySummary(): Promise<void> {
+        if (!this.weeklySummary) return;
+
+        const isDue = await this.weeklySummary.isDue();
+        if (isDue) {
+            await this.generateWeeklySummary();
+        }
+    }
 
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<VaultRecallSettings>);
