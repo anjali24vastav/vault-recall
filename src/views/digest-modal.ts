@@ -19,7 +19,7 @@ export class DailyDigestModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'vr-digest-header' });
-        header.createEl('h2', { text: '🧠 Your Daily Recall' });
+        header.createEl('h2', { text: '🧠 Your daily recall' });
 
         const date = new Date().toLocaleDateString('en-US', {
             weekday: 'long',
@@ -38,7 +38,7 @@ export class DailyDigestModal extends Modal {
             return;
         }
 
-        const subtitle = contentEl.createEl('p', {
+        contentEl.createEl('p', {
             text: `Here are ${this.notes.length} notes you may have forgotten:`,
             cls: 'vr-digest-subtitle',
         });
@@ -52,7 +52,7 @@ export class DailyDigestModal extends Modal {
         // Footer
         const footer = contentEl.createDiv({ cls: 'vr-digest-footer' });
         footer.createEl('p', {
-            text: '💡 Tip: Review these notes to strengthen your knowledge connections',
+            text: '💡 Tip: review these notes to strengthen your knowledge connections',
             cls: 'vr-digest-tip',
         });
     }
@@ -85,7 +85,7 @@ export class DailyDigestModal extends Modal {
         });
         openBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.app.workspace.getLeaf(false).openFile(note.file);
+            void this.app.workspace.getLeaf(false).openFile(note.file);
             this.close();
         });
 

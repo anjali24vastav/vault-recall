@@ -42,7 +42,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'Vault Recall Settings' });
+        new Setting(containerEl).setName('Vault Recall settings').setHeading();
 
         // ── License / Pro status ────────────────────────
         this.renderLicenseSection(containerEl);
@@ -121,7 +121,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
         } else {
             const desc = document.createDocumentFragment();
             desc.append('Enter your license key to unlock all premium features. ');
-            const buyLink = desc.createEl('a', {
+            desc.createEl('a', {
                 text: 'Get a license key →',
                 href: 'https://vastavanjali.gumroad.com/l/nrwpa',
             });

@@ -63,7 +63,7 @@ export class SmartResurfacer {
 
         // Score each candidate
         const scored: ResurfacedNote[] = [];
-        for (const [_, candidate] of candidateMap) {
+        for (const [, candidate] of candidateMap) {
             const { file, maxSimilarity } = candidate;
             const daysSince = this.getDaysSinceModified(file);
             const backlinks = getBacklinkCount(this.app, file);

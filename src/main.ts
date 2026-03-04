@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, TFile, Notice } from 'obsidian';
+import { Plugin, TFile, Notice } from 'obsidian';
 import { DEFAULT_SETTINGS, VaultRecallSettings, VaultRecallSettingTab } from './settings';
 import { EmbeddingEngine } from './embeddings/engine';
 import { SmartResurfacer } from './resurfacer/resurfacer';
@@ -41,38 +41,38 @@ export default class VaultRecallPlugin extends Plugin {
 
         // Ribbon icon to open sidebar
         this.addRibbonIcon('brain', 'Vault Recall', () => {
-            this.activateView();
+            void this.activateView();
         });
 
         // Commands
         this.addCommand({
-            id: 'open-vault-recall',
-            name: 'Open Vault Recall sidebar',
-            callback: () => this.activateView(),
+            id: 'open-sidebar',
+            name: 'Open sidebar',
+            callback: () => { void this.activateView(); },
         });
 
         this.addCommand({
             id: 'reindex-vault',
             name: 'Reindex vault',
-            callback: () => this.reindexVault(),
+            callback: () => { void this.reindexVault(); },
         });
 
         this.addCommand({
             id: 'show-daily-digest',
             name: 'Show daily digest',
-            callback: () => this.showDailyDigest(),
+            callback: () => { void this.showDailyDigest(); },
         });
 
         // Settings tab
         this.addSettingTab(new VaultRecallSettingTab(this.app, this));
 
         // Auto-index on startup
-        this.app.workspace.onLayoutReady(async () => {
-            await this.initializeIndex();
-
-            if (this.settings.showDigestOnStartup && this.engine?.isReady()) {
-                setTimeout(() => this.showDailyDigest(), 2000);
-            }
+        this.app.workspace.onLayoutReady(() => {
+            void this.initializeIndex().then(() => {
+                if (this.settings.showDigestOnStartup && this.engine?.isReady()) {
+                    setTimeout(() => { void this.showDailyDigest(); }, 2000);
+                }
+            });
         });
 
         // Listen for file changes — debounced
@@ -93,7 +93,7 @@ export default class VaultRecallPlugin extends Plugin {
         );
 
         this.registerEvent(
-            this.app.vault.on('rename', async (file, oldPath) => {
+            this.app.vault.on('rename', (file, oldPath) => {
                 if (file instanceof TFile && file.extension === 'md') {
                     this.engine?.removeNote(oldPath);
                     this.debouncedIndexNote(file);
@@ -112,7 +112,7 @@ export default class VaultRecallPlugin extends Plugin {
     onunload(): void {
         if (this.indexDebounceTimer) clearTimeout(this.indexDebounceTimer);
         if (this.refreshDebounceTimer) clearTimeout(this.refreshDebounceTimer);
-        this.engine?.saveIndex();
+        void this.engine?.saveIndex();
     }
 
     // ── License ─────────────────────────────────────────────
@@ -128,7 +128,7 @@ export default class VaultRecallPlugin extends Plugin {
     }
 
     deactivateLicense(): void {
-        this.licenseManager.validate(undefined);
+        void this.licenseManager.validate(undefined);
     }
 
     /**
@@ -174,7 +174,7 @@ export default class VaultRecallPlugin extends Plugin {
 
         const loaded = await this.engine.loadIndex();
         if (loaded) {
-            new Notice('Vault Recall: Index loaded from cache');
+            new Notice('Vault Recall: index loaded from cache');
         } else {
             await this.engine.indexVault();
             await this.engine.saveIndex();
@@ -205,15 +205,18 @@ export default class VaultRecallPlugin extends Plugin {
             clearTimeout(this.indexDebounceTimer);
         }
 
-        this.indexDebounceTimer = setTimeout(async () => {
+        this.indexDebounceTimer = setTimeout(() => {
             this.indexDebounceTimer = null;
-            for (const path of this.pendingIndexFiles) {
-                const f = this.app.vault.getAbstractFileByPath(path);
-                if (f instanceof TFile) {
-                    await this.engine?.indexNote(f);
+            const doIndex = async () => {
+                for (const path of this.pendingIndexFiles) {
+                    const f = this.app.vault.getAbstractFileByPath(path);
+                    if (f instanceof TFile) {
+                        await this.engine?.indexNote(f);
+                    }
                 }
-            }
-            this.pendingIndexFiles.clear();
+                this.pendingIndexFiles.clear();
+            };
+            void doIndex();
         }, 2000);
     }
 
@@ -222,11 +225,11 @@ export default class VaultRecallPlugin extends Plugin {
             clearTimeout(this.refreshDebounceTimer);
         }
 
-        this.refreshDebounceTimer = setTimeout(async () => {
+        this.refreshDebounceTimer = setTimeout(() => {
             this.refreshDebounceTimer = null;
             const view = this.getRecallView();
             if (view) {
-                await view.refresh();
+                void view.refresh();
             }
         }, 300);
     }
@@ -235,7 +238,7 @@ export default class VaultRecallPlugin extends Plugin {
 
     private async showDailyDigest(): Promise<void> {
         if (!this.resurfacer || !this.engine?.isReady()) {
-            new Notice('Vault Recall: Index not ready. Run "Reindex vault" first.');
+            new Notice('Vault Recall: index not ready — run "Reindex vault" first.');
             return;
         }
 
@@ -247,14 +250,14 @@ export default class VaultRecallPlugin extends Plugin {
     private async activateView(): Promise<void> {
         const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE);
         if (existing.length > 0) {
-            this.app.workspace.revealLeaf(existing[0]!);
+            void this.app.workspace.revealLeaf(existing[0]!);
             return;
         }
 
         const leaf = this.app.workspace.getRightLeaf(false);
         if (leaf) {
             await leaf.setViewState({ type: VIEW_TYPE, active: true });
-            this.app.workspace.revealLeaf(leaf);
+            void this.app.workspace.revealLeaf(leaf);
         }
     }
 

@@ -1,8 +1,6 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon } from 'obsidian';
 import type VaultRecallPlugin from '../main';
-import type { ResurfacedNote } from '../resurfacer/resurfacer';
 import type { HealthReport } from '../health/analyzer';
-import type { SimilarNote } from '../embeddings/engine';
 import { FREE_LIMITS } from '../license';
 
 export const VIEW_TYPE = 'vault-recall-view';
@@ -83,7 +81,7 @@ export class VaultRecallView extends ItemView {
                 await this.renderRelatedTab(content);
                 break;
             case 'health':
-                this.renderHealthTab(content);
+                void this.renderHealthTab(content);
                 break;
         }
     }
@@ -95,7 +93,7 @@ export class VaultRecallView extends ItemView {
         tab.createSpan({ text: `${icon} ${label}` });
         tab.addEventListener('click', () => {
             this.activeTab = id;
-            this.renderView();
+            void this.renderView();
         });
     }
 
@@ -103,7 +101,7 @@ export class VaultRecallView extends ItemView {
 
     private async renderRecallTab(container: HTMLElement): Promise<void> {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '📌 Your Daily Recall' });
+        header.createEl('h4', { text: '📌 Your daily recall' });
         header.createEl('p', {
             text: 'Notes you wrote but may have forgotten',
             cls: 'vr-subtitle',
@@ -113,7 +111,7 @@ export class VaultRecallView extends ItemView {
             const loading = container.createDiv({ cls: 'vr-empty-state' });
             loading.createEl('p', { text: '⏳ Indexing vault…' });
             loading.createEl('p', {
-                text: 'Run "Vault Recall: Reindex vault" from the command palette',
+                text: 'Run "Reindex vault" from the command palette',
                 cls: 'vr-subtitle',
             });
             return;
@@ -140,9 +138,9 @@ export class VaultRecallView extends ItemView {
 
     // ── Related Tab ─────────────────────────────────────────────
 
-    private async renderRelatedTab(container: HTMLElement): Promise<void> {
+    private renderRelatedTab(container: HTMLElement): void {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '🔗 You Wrote About This' });
+        header.createEl('h4', { text: '🔗 You wrote about this' });
         header.createEl('p', {
             text: 'Forgotten notes related to what you\'re working on',
             cls: 'vr-subtitle',
@@ -191,7 +189,7 @@ export class VaultRecallView extends ItemView {
 
     private renderHealthTab(container: HTMLElement): void {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '❤️ Vault Health' });
+        header.createEl('h4', { text: '❤️ Vault health' });
 
         const report = this.plugin.healthAnalyzer?.analyze();
         if (!report) {
@@ -244,7 +242,7 @@ export class VaultRecallView extends ItemView {
                 text: 'See orphan notes, broken links, and more',
                 cls: 'vr-subtitle',
             });
-            const link = upsell.createEl('a', {
+            upsell.createEl('a', {
                 text: 'Upgrade to Pro →',
                 href: 'https://vastavanjali.gumroad.com/l/nrwpa',
                 cls: 'vr-upsell-link',
@@ -259,7 +257,7 @@ export class VaultRecallView extends ItemView {
         let label = 'Healthy';
         if (report.score < 50) {
             scoreClass = 'vr-score-bad';
-            label = 'Needs Work';
+            label = 'Needs work';
         } else if (report.score < 75) {
             scoreClass = 'vr-score-warning';
             label = 'Fair';
@@ -285,7 +283,7 @@ export class VaultRecallView extends ItemView {
             const item = group.createDiv({ cls: 'vr-issue-item vr-clickable' });
             item.createSpan({ text: file.basename });
             item.addEventListener('click', () => {
-                this.app.workspace.getLeaf(false).openFile(file);
+                void this.app.workspace.getLeaf(false).openFile(file);
             });
         }
     }
@@ -302,7 +300,7 @@ export class VaultRecallView extends ItemView {
         const card = container.createDiv({ cls: 'vr-note-card' });
 
         const titleRow = card.createDiv({ cls: 'vr-card-title-row' });
-        const titleEl = titleRow.createSpan({ text: file.basename, cls: 'vr-card-title' });
+        titleRow.createSpan({ text: file.basename, cls: 'vr-card-title' });
         titleRow.createSpan({ text: age, cls: 'vr-card-age' });
 
         if (badge) {
@@ -315,7 +313,7 @@ export class VaultRecallView extends ItemView {
 
         // Click to open
         card.addEventListener('click', () => {
-            this.app.workspace.getLeaf(false).openFile(file);
+            void this.app.workspace.getLeaf(false).openFile(file);
         });
     }
 }
