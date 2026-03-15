@@ -102,7 +102,7 @@ export class VaultRecallView extends ItemView {
 
     private async renderRecallTab(container: HTMLElement): Promise<void> {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '📌 your daily recall' });
+        header.createEl('h4', { text: '📌 ' + 'Your daily recall' });
         header.createEl('p', {
             text: 'Notes you wrote but may have forgotten',
             cls: 'vr-subtitle',
@@ -110,9 +110,9 @@ export class VaultRecallView extends ItemView {
 
         if (!this.plugin.engine?.isReady()) {
             const loading = container.createDiv({ cls: 'vr-empty-state' });
-            loading.createEl('p', { text: '⏳ indexing vault…' });
+            loading.createEl('p', { text: '⏳ ' + 'Indexing vault…' });
             loading.createEl('p', {
-                text: 'Run "reindex vault" from the command palette',
+                text: 'Run "Reindex vault" ' + 'from the command palette',
                 cls: 'vr-subtitle',
             });
             return;
@@ -123,7 +123,7 @@ export class VaultRecallView extends ItemView {
 
         if (!digest || digest.length === 0) {
             const empty = container.createDiv({ cls: 'vr-empty-state' });
-            empty.createEl('p', { text: '✨ nothing to resurface right now' });
+            empty.createEl('p', { text: '✨ ' + 'Nothing to resurface right now' });
             empty.createEl('p', {
                 text: 'Keep writing — notes older than ' + this.plugin.settings.minDaysOld + ' days will appear here',
                 cls: 'vr-subtitle',
@@ -141,7 +141,7 @@ export class VaultRecallView extends ItemView {
 
     private renderRelatedTab(container: HTMLElement): void {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '🔗 you wrote about this' });
+        header.createEl('h4', { text: '🔗 ' + 'You wrote about this' });
         header.createEl('p', {
             text: 'Forgotten notes related to what you\'re working on',
             cls: 'vr-subtitle',
@@ -149,14 +149,14 @@ export class VaultRecallView extends ItemView {
 
         if (!this.plugin.engine?.isReady()) {
             const loading = container.createDiv({ cls: 'vr-empty-state' });
-            loading.createEl('p', { text: '⏳ index not ready' });
+            loading.createEl('p', { text: '⏳ ' + 'Index not ready' });
             return;
         }
 
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) {
             const empty = container.createDiv({ cls: 'vr-empty-state' });
-            empty.createEl('p', { text: '📝 open a note to see related content' });
+            empty.createEl('p', { text: '📝 ' + 'Open a note to see related content' });
             return;
         }
 
@@ -164,7 +164,7 @@ export class VaultRecallView extends ItemView {
 
         if (suggestions.length === 0) {
             const empty = container.createDiv({ cls: 'vr-empty-state' });
-            empty.createEl('p', { text: '🔍 no forgotten related notes found' });
+            empty.createEl('p', { text: '🔍 ' + 'No forgotten related notes found' });
             empty.createEl('p', {
                 text: 'This note might be new, or related notes were modified recently',
                 cls: 'vr-subtitle',
@@ -190,7 +190,7 @@ export class VaultRecallView extends ItemView {
 
     private renderHealthTab(container: HTMLElement): void {
         const header = container.createDiv({ cls: 'vr-section-header' });
-        header.createEl('h4', { text: '❤️ vault health' });
+        header.createEl('h4', { text: '❤️ ' + 'Vault health' });
 
         const report = this.plugin.healthAnalyzer?.analyze();
         if (!report) {
@@ -238,13 +238,13 @@ export class VaultRecallView extends ItemView {
         } else {
             // Free tier: show upgrade prompt
             const upsell = container.createDiv({ cls: 'vr-upsell' });
-            upsell.createEl('p', { text: '🔓 unlock detailed issue lists with pro' });
+            upsell.createEl('p', { text: '🔓 ' + 'Unlock detailed issue lists with Pro' });
             upsell.createEl('p', {
                 text: 'See orphan notes, broken links, and more',
                 cls: 'vr-subtitle',
             });
             upsell.createEl('a', {
-                text: 'Upgrade to pro →',
+                text: 'Upgrade to ' + 'Pro →',
                 href: 'https://vastavanjali.gumroad.com/l/nrwpa',
                 cls: 'vr-upsell-link',
             });

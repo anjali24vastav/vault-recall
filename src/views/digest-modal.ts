@@ -19,7 +19,7 @@ export class DailyDigestModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'vr-digest-header' });
-        header.createEl('h2', { text: '🧠 your daily recall' });
+        header.createEl('h2', { text: '🧠 ' + 'Your daily recall' });
 
         const date = new Date().toLocaleDateString('en-US', {
             weekday: 'long',
@@ -30,7 +30,7 @@ export class DailyDigestModal extends Modal {
 
         if (this.notes.length === 0) {
             const empty = contentEl.createDiv({ cls: 'vr-digest-empty' });
-            empty.createEl('p', { text: '✨ nothing to resurface today!' });
+            empty.createEl('p', { text: '✨ ' + 'Nothing to resurface today!' });
             empty.createEl('p', {
                 text: 'All your notes are either too recent or well-connected.',
                 cls: 'vr-subtitle',
@@ -52,7 +52,7 @@ export class DailyDigestModal extends Modal {
         // Footer
         const footer = contentEl.createDiv({ cls: 'vr-digest-footer' });
         footer.createEl('p', {
-            text: '💡 tip: review these notes to strengthen your knowledge connections',
+            text: '💡 ' + 'Tip: review these notes to strengthen your knowledge connections',
             cls: 'vr-digest-tip',
         });
     }
@@ -80,7 +80,7 @@ export class DailyDigestModal extends Modal {
         const actions = card.createDiv({ cls: 'vr-digest-actions' });
 
         const openBtn = actions.createEl('button', {
-            text: '📖 open',
+            text: '📖 ' + 'Open',
             cls: 'vr-btn vr-btn-primary',
         });
         openBtn.addEventListener('click', (e) => {
@@ -90,7 +90,7 @@ export class DailyDigestModal extends Modal {
         });
 
         const dismissBtn = actions.createEl('button', {
-            text: '✕ dismiss',
+            text: '✕ ' + 'Dismiss',
             cls: 'vr-btn vr-btn-ghost',
         });
         dismissBtn.addEventListener('click', (e) => {
