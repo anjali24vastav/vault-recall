@@ -107,7 +107,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
 
         if (isPro) {
             new Setting(containerEl)
-                .setName('✅ Pro active')
+                .setName('✅ pro active')
                 .setDesc('All premium features are unlocked')
                 .addButton(btn => btn
                     .setButtonText('Deactivate')
@@ -127,13 +127,13 @@ export class VaultRecallSettingTab extends PluginSettingTab {
             });
 
             const setting = new Setting(containerEl)
-                .setName('🔑 Activate pro')
+                .setName('🔑 activate pro')
                 .setDesc(desc);
 
             let keyInput = '';
 
             setting.addText(text => text
-                .setPlaceholder('XXXX-XXXX-XXXX-XXXX')
+                .setPlaceholder('Xxxx-xxxx-xxxx-xxxx')
                 .setValue(this.plugin.settings.licenseKey)
                 .onChange((value) => {
                     keyInput = value;
@@ -155,9 +155,9 @@ export class VaultRecallSettingTab extends PluginSettingTab {
                     const status = await this.plugin.activateLicense(keyInput.trim());
 
                     if (status.valid) {
-                        new Notice('🎉 Pro activated!');
+                        new Notice('🎉 pro activated!');
                     } else {
-                        new Notice('❌ Invalid license key — please try again.');
+                        new Notice('❌ invalid license key — please try again.');
                         this.plugin.settings.licenseKey = '';
                     }
 

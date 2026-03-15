@@ -238,7 +238,7 @@ export default class VaultRecallPlugin extends Plugin {
 
     private async showDailyDigest(): Promise<void> {
         if (!this.resurfacer || !this.engine?.isReady()) {
-            new Notice('Vault recall: index not ready — run "Reindex vault" first.');
+            new Notice('Vault recall: index not ready — run "reindex vault" first.');
             return;
         }
 
