@@ -42,7 +42,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        new Setting(containerEl).setName('General').setHeading();
+
 
         // ── License / Pro status ────────────────────────
         this.renderLicenseSection(containerEl);
