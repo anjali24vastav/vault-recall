@@ -40,7 +40,7 @@ export default class VaultRecallPlugin extends Plugin {
         this.registerView(VIEW_TYPE, (leaf) => new VaultRecallView(leaf, this));
 
         // Ribbon icon to open sidebar
-        this.addRibbonIcon('brain', 'Vault Recall', () => {
+        this.addRibbonIcon('brain', 'Vault recall', () => {
             void this.activateView();
         });
 
@@ -174,7 +174,7 @@ export default class VaultRecallPlugin extends Plugin {
 
         const loaded = await this.engine.loadIndex();
         if (loaded) {
-            new Notice('Vault Recall: index loaded from cache');
+            new Notice('Vault recall: index loaded from cache');
         } else {
             await this.engine.indexVault();
             await this.engine.saveIndex();
@@ -238,7 +238,7 @@ export default class VaultRecallPlugin extends Plugin {
 
     private async showDailyDigest(): Promise<void> {
         if (!this.resurfacer || !this.engine?.isReady()) {
-            new Notice('Vault Recall: index not ready — run "Reindex vault" first.');
+            new Notice('Vault recall: index not ready — run "Reindex vault" first.');
             return;
         }
 

@@ -56,7 +56,7 @@ export class EmbeddingEngine {
         const files = this.getMarkdownFiles();
 
         if (files.length === 0) {
-            new Notice('Vault Recall: no markdown files found to index.');
+            new Notice('Vault recall: no markdown files found to index.');
             return;
         }
 

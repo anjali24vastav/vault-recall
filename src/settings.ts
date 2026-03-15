@@ -42,7 +42,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        new Setting(containerEl).setName('Vault Recall settings').setHeading();
+        new Setting(containerEl).setName('General').setHeading();
 
         // ── License / Pro status ────────────────────────
         this.renderLicenseSection(containerEl);
@@ -107,7 +107,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
 
         if (isPro) {
             new Setting(containerEl)
-                .setName('✅ Vault Recall Pro')
+                .setName('✅ Pro active')
                 .setDesc('All premium features are unlocked')
                 .addButton(btn => btn
                     .setButtonText('Deactivate')
@@ -127,7 +127,7 @@ export class VaultRecallSettingTab extends PluginSettingTab {
             });
 
             const setting = new Setting(containerEl)
-                .setName('🔑 Activate Pro')
+                .setName('🔑 Activate pro')
                 .setDesc(desc);
 
             let keyInput = '';
@@ -155,9 +155,9 @@ export class VaultRecallSettingTab extends PluginSettingTab {
                     const status = await this.plugin.activateLicense(keyInput.trim());
 
                     if (status.valid) {
-                        new Notice('🎉 Vault Recall Pro activated!');
+                        new Notice('🎉 Pro activated!');
                     } else {
-                        new Notice('❌ Invalid license key. Please try again.');
+                        new Notice('❌ Invalid license key — please try again.');
                         this.plugin.settings.licenseKey = '';
                     }
 
@@ -213,13 +213,13 @@ export class VaultRecallSettingTab extends PluginSettingTab {
             for (const folder of matches.slice(0, 10)) {
                 const item = dropdown.createDiv({ cls: 'vr-folder-dropdown-item' });
                 item.setText(folder);
-                item.addEventListener('click', async () => {
+                item.addEventListener('click', () => {
                     this.plugin.settings.excludedFolders.push(folder);
-                    await this.plugin.saveSettingsAndReindex();
-                    searchInput.value = '';
-                    dropdown.hide();
-                    // Re-render the whole settings page to update limit state
-                    this.display();
+                    void this.plugin.saveSettingsAndReindex().then(() => {
+                        searchInput.value = '';
+                        dropdown.hide();
+                        this.display();
+                    });
                 });
             }
 
@@ -250,11 +250,12 @@ export class VaultRecallSettingTab extends PluginSettingTab {
             tag.createSpan({ text: folder, cls: 'vr-folder-tag-name' });
 
             const removeBtn = tag.createSpan({ text: '✕', cls: 'vr-folder-tag-remove' });
-            removeBtn.addEventListener('click', async () => {
+            removeBtn.addEventListener('click', () => {
                 this.plugin.settings.excludedFolders =
                     this.plugin.settings.excludedFolders.filter((f: string) => f !== folder);
-                await this.plugin.saveSettingsAndReindex();
-                this.display();
+                void this.plugin.saveSettingsAndReindex().then(() => {
+                    this.display();
+                });
             });
         }
     }

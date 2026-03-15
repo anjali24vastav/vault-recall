@@ -25,7 +25,7 @@ export class VaultRecallView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'Vault Recall';
+        return 'Vault recall';
     }
 
     getIcon(): string {
@@ -63,11 +63,12 @@ export class VaultRecallView extends ItemView {
 
         const refreshBtn = topBar.createDiv({ cls: 'vr-refresh-btn', attr: { 'aria-label': 'Refresh & reindex' } });
         setIcon(refreshBtn, 'refresh-cw');
-        refreshBtn.addEventListener('click', async () => {
+        refreshBtn.addEventListener('click', () => {
             refreshBtn.addClass('vr-spinning');
-            await this.plugin.triggerReindex();
-            refreshBtn.removeClass('vr-spinning');
-            await this.renderView();
+            void this.plugin.triggerReindex().then(() => {
+                refreshBtn.removeClass('vr-spinning');
+                void this.renderView();
+            });
         });
 
         // Tab content
@@ -78,7 +79,7 @@ export class VaultRecallView extends ItemView {
                 await this.renderRecallTab(content);
                 break;
             case 'related':
-                await this.renderRelatedTab(content);
+                this.renderRelatedTab(content);
                 break;
             case 'health':
                 void this.renderHealthTab(content);
@@ -202,22 +203,22 @@ export class VaultRecallView extends ItemView {
 
         // Stats
         const stats = container.createDiv({ cls: 'vr-health-stats' });
-        this.renderStatRow(stats, '📄', 'Total Notes', report.totalNotes.toString());
-        this.renderStatRow(stats, '🔗', 'Total Links', report.totalLinks.toString());
-        this.renderStatRow(stats, '🏝️', 'Orphan Notes', report.orphanNotes.length.toString());
-        this.renderStatRow(stats, '💔', 'Broken Links', report.brokenLinks.length.toString());
-        this.renderStatRow(stats, '📭', 'Empty Notes', report.emptyNotes.length.toString());
-        this.renderStatRow(stats, '👯', 'Duplicate Titles', report.duplicateTitles.length.toString());
+        this.renderStatRow(stats, '📄', 'Total notes', report.totalNotes.toString());
+        this.renderStatRow(stats, '🔗', 'Total links', report.totalLinks.toString());
+        this.renderStatRow(stats, '🏝️', 'Orphan notes', report.orphanNotes.length.toString());
+        this.renderStatRow(stats, '💔', 'Broken links', report.brokenLinks.length.toString());
+        this.renderStatRow(stats, '📭', 'Empty notes', report.emptyNotes.length.toString());
+        this.renderStatRow(stats, '👯', 'Duplicate titles', report.duplicateTitles.length.toString());
 
         // Issue details — Pro only
         if (this.plugin.isPro() || FREE_LIMITS.fullHealthDetails) {
             if (report.orphanNotes.length > 0) {
-                this.renderIssueGroup(container, '🏝️ Orphan Notes', report.orphanNotes.slice(0, 10));
+                this.renderIssueGroup(container, '🏝️ Orphan notes', report.orphanNotes.slice(0, 10));
             }
 
             if (report.brokenLinks.length > 0) {
                 const group = container.createDiv({ cls: 'vr-issue-group' });
-                group.createEl('h5', { text: `💔 Broken Links (${report.brokenLinks.length})` });
+                group.createEl('h5', { text: `💔 Broken links (${report.brokenLinks.length})` });
                 for (const bl of report.brokenLinks.slice(0, 10)) {
                     const item = group.createDiv({ cls: 'vr-issue-item' });
                     item.createSpan({
@@ -232,7 +233,7 @@ export class VaultRecallView extends ItemView {
             }
 
             if (report.emptyNotes.length > 0) {
-                this.renderIssueGroup(container, '📭 Empty Notes', report.emptyNotes.slice(0, 10));
+                this.renderIssueGroup(container, '📭 Empty notes', report.emptyNotes.slice(0, 10));
             }
         } else {
             // Free tier: show upgrade prompt
